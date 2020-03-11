@@ -24,24 +24,29 @@ public class SensorSever : MonoBehaviour {
     private string serverurl = "http://localhost:3000/";
     //IMqttClient mqttClient;
     [SerializeField]
-    private MqttController mqttController;
-    [SerializeField]
     private MqttEulerController mqttEuler;
-    NineAxis axisdata;
-    Euler eulerdata;
+    private EulerBlanding euler;
     [SerializeField]
     Button button;
 
     void Start () {
         address.text = serverurl;
         warningText.text = "";
-        StartCoroutine (ServerTest ());
+        //StartCoroutine (ServerTest ());
         //express経由のデータ取得
         //StartCoroutine (GetSensorData ());
 
         //StartCoroutine (PostServerData ());
-        mqttController.setHost ("192.168.1.6");
+        //mqttController.setHost ("192.168.1.6");
         button.OnClickAsObservable ().Subscribe (_ => Debug.Log ("click"));
+        //MqttTest();
+        mqttEuler.OnMessageReceived.Subscribe (message => {
+            bool contain = message.Contains ("EH");
+            if (!contain) return;
+            Debug.Log (message);
+            EulerBlanding data = JsonUtility.FromJson<EulerBlanding> (message);
+            euler = data;
+        });
     }
 
     // Update is called once per frame
@@ -53,35 +58,11 @@ public class SensorSever : MonoBehaviour {
 
             deltatime -= 1.0f;
         }
-        if (eulerdata != null) {
-            SetTargetEuler (eulerdata);
+        if (euler != null) {
+            Debug.Log ("update");
+            SetTargetEuler (euler);
         }
 
-        //MqttTest();
-        mqttController.OnMessageReceived.Subscribe (message => {
-            //データ成型
-            string json = "";
-            string[] arr = message.Split ('{');
-            json = string.Join ("{\"", arr);
-            string[] semiArr = json.Split (':');
-            json = string.Join ("\":", semiArr);
-            string[] comArr = json.Split (',');
-            json = string.Join (",\"", comArr);
-            NineAxis list = JsonUtility.FromJson<NineAxis> (json);
-            axisdata = list;
-        });
-        mqttEuler.OnMessageReceived.Subscribe (message => {
-            //データ成型
-            string json = "";
-            string[] arr = message.Split ('{');
-            json = string.Join ("{\"", arr);
-            string[] semiArr = json.Split (':');
-            json = string.Join ("\":", semiArr);
-            string[] comArr = json.Split (',');
-            json = string.Join (",\"", comArr);
-            Euler data = JsonUtility.FromJson<Euler> (json);
-            eulerdata = data;
-        });
     }
     //SensorData取得通信
     IEnumerator GetSensorData () {
@@ -124,9 +105,19 @@ public class SensorSever : MonoBehaviour {
         datastr += "GX:" + $"{data.gx:F3}" + " GY:" + $"{data.gy:F3}" + " GZ:" + $"{data.gz:F3}" + "\n";
         dataText.text = datastr;
     }
-    void SetTargetEuler (Euler euler) {
-        target.transform.rotation = Quaternion.Euler (euler.pitch, euler.head, euler.roll);
-        if (eulerdata.pitch < -30.0f) {
+    void SetTargetEuler (EulerBlanding eulerdata) {
+        Debug.Log ("load");
+        Debug.Log (eulerdata.EP);
+        float targetPitch = eulerdata.EP; // - calibrateEuler.pitch + 90.0f;
+        float targetHead = eulerdata.EH; // - calibrateEuler.head;
+        float targetRoll = eulerdata.ER; // - calibrateEuler.roll;
+        Debug.Log (target.transform.rotation);
+        target.transform.rotation = Quaternion.Euler (
+            targetPitch,
+            targetHead,
+            targetRoll);
+        Debug.Log ("set");
+        if (eulerdata.EP < -30.0f) {
             warningText.text = "Warning!\n危険な体勢です！";
             spotLight.SetActive (true);
         } else {

@@ -10,7 +10,7 @@ using UnityEngine.UI;
 public class MqttEulerController : MonoBehaviour {
     IMqttClient mqttClient;
     public Subject<string> OnMessageReceived { get; private set; } = new Subject<string> ();
-    private string mqttHost = "192.168.1.6";
+    private string mqttHost = "192.168.1.4";
     async void Start () {
         var factory = new MqttFactory ();
         mqttClient = factory.CreateMqttClient ();
@@ -26,7 +26,7 @@ public class MqttEulerController : MonoBehaviour {
             Debug.Log ("MQTTブローカに接続しました");
             await mqttClient.SubscribeAsync (
                 new TopicFilterBuilder ()
-                .WithTopic ("itoyuNineAxis/Euler")
+                .WithTopic ("itoyuNineAxis")
                 .Build ());
             Debug.Log ("指定したトピックをSubscribeしました");
         };
